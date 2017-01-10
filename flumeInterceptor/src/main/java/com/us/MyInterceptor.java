@@ -1,7 +1,6 @@
 package com.us;
 
 import com.google.common.base.Charsets;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.flume.Context;
 import org.apache.flume.Event;
@@ -11,12 +10,17 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.apache.flume.interceptor.RegexFilteringInterceptor.Constants.DEFAULT_REGEX;
+import static org.apache.flume.interceptor.RegexFilteringInterceptor.Constants.REGEX;
+
 /**
  * Created by yangyibo on 17/1/6.
  */
 public class MyInterceptor  implements Interceptor {
+    private final Pattern regex;
 
-    private MyInterceptor() {
+    private MyInterceptor(Pattern regex) {
+        this.regex = regex;
     }
 
     @Override
@@ -51,11 +55,12 @@ public class MyInterceptor  implements Interceptor {
 
 
         //匹配日志信息中以 Parsing events: 为开头关键字,以END 为结尾关键字 的日志信息段
-        String pattern= "(Parsing events)(.*)(END)";
+//        String pattern= "(Parsing events)(.*)(END)";
         // 创建 Pattern 对象
-        Pattern r= Pattern.compile(pattern);
+//        Pattern r= Pattern.compile(pattern);
         // 现在创建 matcher 对象
-        Matcher m= r.matcher(body);
+//        Matcher m= r.matcher(body);
+        Matcher m= regex.matcher(body);
         StringBuffer bodyoutput = new StringBuffer();
         if(m.find())//此处可以用多个正则进行匹配,多条件可以用&& 或者|| 的方式约束连接。
         {
@@ -81,15 +86,17 @@ public class MyInterceptor  implements Interceptor {
     }
 
     public static class Builder implements Interceptor.Builder {
-        private String regexString;
+        private Pattern regex;
         //使用Builder初始化Interceptor
         @Override
         public Interceptor build() {
-            return new MyInterceptor();
+            return new MyInterceptor(regex);
         }
 
         @Override
         public void configure(Context context) {
+            String regexString = context.getString(REGEX, DEFAULT_REGEX);
+            regex = Pattern.compile(regexString);
         }
     }
 }
