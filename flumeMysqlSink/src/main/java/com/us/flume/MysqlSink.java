@@ -6,7 +6,6 @@ package com.us.flume;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
-import com.google.common.collect.Lists;
 import org.apache.flume.*;
 import org.apache.flume.conf.Configurable;
 import org.apache.flume.sink.AbstractSink;
@@ -17,6 +16,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
@@ -75,7 +75,7 @@ public class MysqlSink extends AbstractSink implements Configurable {
             conn.setAutoCommit(false);
             //创建一个Statement对象
             preparedStatement = conn.prepareStatement("insert into " + tableName +
-                    " (content,create_by) values (?,?)");
+                    " (content,create_by,create_time,update_by,update_time) values  (?,null,now(),null,now())");
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -111,7 +111,8 @@ public class MysqlSink extends AbstractSink implements Configurable {
         Event event;
         String content;
 
-        List<Info> infos = Lists.newArrayList();
+//        List<Info> infos = Lists.newArrayList();
+        List<String> contents=new ArrayList<>();
         transaction.begin();
         try {
             for (int i = 0; i < batchSize; i++) {
@@ -119,27 +120,28 @@ public class MysqlSink extends AbstractSink implements Configurable {
                 if (event != null) {//对事件进行处理
                     //event 的 body 为   "exec tail$i , abel"
                     content = new String(event.getBody());
-                    Info info=new Info();
-                    if (content.contains(",")) {
-                        //存储 event 的 content
-                        info.setContent(content.substring(0, content.indexOf(",")));
-                        //存储 event 的 create  +1 是要减去那个 ","
-                        info.setCreateBy(content.substring(content.indexOf(",")+1));
-                    }else{
-                        info.setContent(content);
-                    }
-                    infos.add(info);
+                    contents.add(content);
+//                    Info info=new Info();
+//                    if (content.contains(",")) {
+//                        //存储 event 的 content
+//                        info.setContent(content.substring(0, content.indexOf(",")));
+//                        //存储 event 的 create  +1 是要减去那个 ","
+//                        info.setCreateBy(content.substring(content.indexOf(",")+1));
+//                    }else{
+//                        info.setContent(content);
+//                    }
+//                    infos.add(info);
                 } else {
                     result = Status.BACKOFF;
                     break;
                 }
             }
 
-            if (infos.size() > 0) {
+            if (contents.size() > 0) {
                 preparedStatement.clearBatch();
-                for (Info temp : infos) {
-                    preparedStatement.setString(1, temp.getContent());
-                    preparedStatement.setString(2, temp.getCreateBy());
+                for (String temp : contents) {
+                    preparedStatement.setString(1,temp);
+//                    preparedStatement.setString(2, temp.getCreateBy());
                     preparedStatement.addBatch();
                 }
                 preparedStatement.executeBatch();
