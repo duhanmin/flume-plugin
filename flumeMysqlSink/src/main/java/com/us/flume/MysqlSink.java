@@ -16,9 +16,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
+import java.util.*;
 
 public class MysqlSink extends AbstractSink implements Configurable {
 
@@ -32,6 +30,7 @@ public class MysqlSink extends AbstractSink implements Configurable {
     private PreparedStatement preparedStatement;
     private Connection conn;
     private int batchSize;
+    private String url;
 
     public MysqlSink() {
         LOG.info("MysqlSink start...");
@@ -49,12 +48,14 @@ public class MysqlSink extends AbstractSink implements Configurable {
         user = context.getString("user");
         Preconditions.checkNotNull(user, "user must be set!!");
 
-        password=new String(Base64.getDecoder().decode(context.getString("password")));
-        password=password.substring(0,password.indexOf(","));
+        password = new String(Base64.getDecoder().decode(context.getString("password")));
+        password = password.substring(0, password.indexOf(","));
 
         Preconditions.checkNotNull(password, "password must be set!!");
         batchSize = context.getInteger("batchSize", 100);
         Preconditions.checkNotNull(batchSize > 0, "batchSize must be a positive number!!");
+        url = context.getString("url");
+        Preconditions.checkNotNull(url, "hostname must be url!!");
     }
 
     @Override
@@ -75,7 +76,8 @@ public class MysqlSink extends AbstractSink implements Configurable {
             conn.setAutoCommit(false);
             //创建一个Statement对象
             preparedStatement = conn.prepareStatement("insert into " + tableName +
-                    " (content,create_by,create_time,update_by,update_time) values  (?,null,now(),null,now())");
+                    " (content,status,create_time) values  (?,0,now())");
+
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -110,9 +112,7 @@ public class MysqlSink extends AbstractSink implements Configurable {
         Transaction transaction = channel.getTransaction();
         Event event;
         String content;
-
-//        List<Info> infos = Lists.newArrayList();
-        List<String> contents=new ArrayList<>();
+        List<String> contents = new ArrayList<>();
         transaction.begin();
         try {
             for (int i = 0; i < batchSize; i++) {
@@ -121,16 +121,7 @@ public class MysqlSink extends AbstractSink implements Configurable {
                     //event 的 body 为   "exec tail$i , abel"
                     content = new String(event.getBody());
                     contents.add(content);
-//                    Info info=new Info();
-//                    if (content.contains(",")) {
-//                        //存储 event 的 content
-//                        info.setContent(content.substring(0, content.indexOf(",")));
-//                        //存储 event 的 create  +1 是要减去那个 ","
-//                        info.setCreateBy(content.substring(content.indexOf(",")+1));
-//                    }else{
-//                        info.setContent(content);
-//                    }
-//                    infos.add(info);
+
                 } else {
                     result = Status.BACKOFF;
                     break;
@@ -140,13 +131,13 @@ public class MysqlSink extends AbstractSink implements Configurable {
             if (contents.size() > 0) {
                 preparedStatement.clearBatch();
                 for (String temp : contents) {
-                    preparedStatement.setString(1,temp);
-//                    preparedStatement.setString(2, temp.getCreateBy());
+                    preparedStatement.setString(1, temp);
                     preparedStatement.addBatch();
                 }
                 preparedStatement.executeBatch();
 
                 conn.commit();
+
             }
             transaction.commit();
         } catch (Exception e) {
@@ -161,6 +152,15 @@ public class MysqlSink extends AbstractSink implements Configurable {
             Throwables.propagate(e);
         } finally {
             transaction.close();
+            try {
+                if (contents.size() > 0) {
+                    for (String temp : contents) {
+                        HttpRequest.sendPost(url, temp);
+                    }
+                }
+            } catch (Exception ex) {
+
+            }
         }
 
         return result;
