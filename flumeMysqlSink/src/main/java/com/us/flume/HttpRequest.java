@@ -4,6 +4,8 @@ import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by yangyibo on 17/2/18.
@@ -41,17 +43,16 @@ public class HttpRequest {
         bufferedReader.close();
         return result.toString();
 }
-//    public static void main(String [] agers){
-//        String url="http://localhost:8080/rawEvents/content";
-//        String body="Parsing events: Omegamon_Base;cms_hostname='itmserver';cms_port='370$i’;integration_type='U';master_reset_flag='';appl_label='';situation_name='disk';situation_type='S';situation_origin='itmserver:LZ';situation_time='01/06/2017 11:33:$i.000';situation_status='N';situation_thrunode='TEMS_TEST';situation_fullname='home_disk_error';situation_displayitem='';source='ITM';sub_source='itmserver:LZ';hostname='itmserver';origin='192.168.100.$i’;adapter_host='itmserver';date=‘$i/06/2017';severity='CRITICAL';msg='itm server home directory > 80%';situation_eventdata='~';END";
-//
-//        Map<String, Object> params=new HashMap<>();
-//        params.put("content",body);
-//        try{
-//            sendPost(url,body);
-//        }catch (Exception ex){
-//
-//        }
-////        HttpClientUtil.httpClientPost(url,params,"UTF-8");
-//    }
+    public static void main(String [] agers){
+        String url="http://localhost:8080/dataCollect/rawEvents";
+        String body="Parsing events: Omegamon_Base;cms_hostname='itmserver';cms_port='370$i’;integration_type='U';master_reset_flag='';appl_label='';situation_name='disk';situation_type='S';situation_origin='itmserver:LZ';situation_time='01/06/2017 11:33:$i.000';situation_status='N';situation_thrunode='TEMS_TEST';situation_fullname='home_disk_error';situation_displayitem='';source='ITM';sub_source='itmserver:LZ';hostname='itmserver';origin='192.168.100.$i’;adapter_host='itmserver';date=‘$i/06/2017';severity='CRITICAL';msg='itm server home directory > 80%';situation_eventdata='~';END";
+
+        Map<String, Object> params=new HashMap<>();
+        params.put("content",body);
+        try{
+            System.out.println("------------"+sendPost(url,body));
+        }catch (Exception ex){
+            ex.getMessage();
+        }
+    }
 }
